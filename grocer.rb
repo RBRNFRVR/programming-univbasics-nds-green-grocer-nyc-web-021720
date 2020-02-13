@@ -1,74 +1,86 @@
 def find_item_by_name_in_collection(name, collection)
-  counter=0
+  counter = 0
   while counter < collection.length
-    if collection[counter][:item]== name
+    if collection[counter][:item] == name
       return collection[counter]
     end
     counter += 1
   end
 end
-def consolidate_cart(cart)
-  new_cart=[]
-  counter=0
-  while counter < cart.length
-    new_cart_item = find_item_by_name_in_collection(cart[counter][:item],new_cart)
-    if new_cart_item != nil
-      new_cart_item[:count] += 1
-    else
-      new_cart_item = {
-        :item => cart[counter][:item],
-        
-      }
-end
 
-def apply_coupons(cart, coupons)
-items_in_the_cart = {
-    "AVOCADO" => {:price => 3.0, :clearance => true, :count => 3},
-    "KALE"    => {:price => 3.0, :clearance => false, :count => 1}
-  }
-  item_in_the_coupon = [{:item => "AVOCADO", :num => 2, :cost => 5.0}]
-  the_expected_outcome = {
-    "AVOCADO" => {:price => 3.0, :clearance => true, :count => 1},
-    "KALE"    => {:price => 3.0, :clearance => false, :count => 1},
-    "AVOCADO W/COUPON" => {:price => 5.0, :clearance => true, :count => 1},
-  }
-  coupons.each do |coupon|
-    name = coupon[:item]
-    if cart[name] && cart[name][:count] >= coupon[:num]
-      if cart["#{name} W/COUPON"]
-        cart["#{name} W/COUPON"][:count] += 1
-      else
-        cart["#{name} W/COUPON"] = {:count => 1, :price => coupon[:cost]}
-        cart["#{name} W/COUPON"][:clearance] = cart[name][:clearance]
-      end
-      cart[name][:count] -= coupon[:num]
+def consolidate_cart(cart)
+  new_cart = []
+  counter = 0
+  while counter < cart.length
+  new_cart_item = find_item_by_name_in_collection(cart[counter][:item], new_cart)
+  if new_cart_item != nil
+    new_cart_item[:count] += 1
+  else
+    new_cart_item = {
+      :item => cart[counter][:item],
+      :price => cart[counter][:price],
+      :clearance => cart[counter][:clearance],
+      :count => 1
+    }
+      new_cart << new_cart_item
     end
+    counter += 1
   end
-  return cart
+  new_cart
+end
+   
+def apply_coupons(cart, coupons)
+  counter = 0
+  while counter < coupons.length
+    cart_item = find_item_by_name_in_collection(coupons[counter][:item], cart)
+    couponed_item_name = "#{coupons[counter][:item]} W/COUPON"
+    cart_item_with_coupon = find_item_by_name_in_collection(couponed_item_name, cart)
+    if cart_item && cart_item[:count] >= coupons[counter][:num]
+      if cart_item_with_coupon
+        cart_item_with_coupon[:count] += coupons[counter][:num]
+        cart_item[:count] -= coupons[counter][:num]
+      else
+        cart_item_with_coupon = {
+          :item => couponed_item_name,
+          :price => coupons[counter][:cost] / coupons[counter][:num],
+          :count => coupons[counter][:num],
+          :clearance => cart_item[:clearance]
+        }
+        cart << cart_item_with_coupon
+        cart_item[:count] -= coupons[counter][:num]      
+      end
+    end
+    counter += 1
+  end
+  cart
 end
 
 def apply_clearance(cart)
-    cart.collect do |item, item_description|
-    if item_description[:clearance] == true
-      # 20% of something, multiply by 20%, get a number, then subtract it from original
-      twenty_percent = item_description[:price] * 0.2
-      item_description[:price] -= twenty_percent
+  counter = 0
+  while counter < cart.length
+    if cart[counter][:clearance]
+      cart[counter][:price] = (cart[counter][:price] - (cart[counter][:price] * 0.20)).round(2)
     end
+    counter += 1
   end
   cart
 end
 
 def checkout(cart, coupons)
-  cart_1 = consolidate_cart(cart: cart)
-  # cart_1["BEETS"][:price]
-  cart_2 = apply_coupons(cart: cart_1, coupons: coupons)
-  cart_3 = apply_clearance(cart: cart_2)
-  # coupon_1 = coupons
+  consolidated_cart = consolidate_cart(cart)
+  couponed_cart = apply_coupons(consolidated_cart, coupons)
+  final_cart = apply_clearance(couponed_cart)
+ 
   total = 0
-  cart_3.each do |name, properties|
-     total += properties[:price] * properties[:count]
-   end
-   total = total * 0.9 if total > 100
-   total
-end
-end
+  counter = 0
+  while counter < final_cart.length
+    total += final_cart[counter][:price] * final_cart[counter][:count]
+    counter += 1
+  end
+  if total > 100
+    total -= (total * 0.10)
+  end
+  total
+end 
+
+
